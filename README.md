@@ -1,3 +1,6 @@
+> This repository is a fork of the original PyElastica repository.
+> This repository attempts to use column-vector convention for the orientation of the rod elements.
+
 <div align='center'> <h1> PyElastica </h1> </div>
 
 [![Build_status][badge-travis]][link-travis] [![CI][badge-CI]][link-CI] [![Documentation Status][badge-docs-status]][link-docs-status] [![codecov][badge-codecov]][link-codecov] [![Downloads][badge-pepy-download-count]][link-pepy-download-count] [![Binder][badge-binder]][link-binder] [![Gitter][badge-gitter]][link-gitter]
@@ -8,13 +11,13 @@ PyElastica is the python implementation of **Elastica**: an *open-source* projec
 
 Visit [cosseratrods.org][link-project-website] for more information and learn about Elastica and Cosserat rod theory.
 
-## Installation 
+## Installation
 [![PyPI version][badge-pypi]][link-pypi]
 
-PyElastica is compatible with Python 3.6 - 3.8. The easiest way to install PyElastica is with PIP. 
+PyElastica is compatible with Python 3.6 - 3.8. The easiest way to install PyElastica is with PIP.
 
 ~~~bash
-$ pip install pyelastica 
+$ pip install pyelastica
 ~~~
 
 ## Documentation
@@ -48,7 +51,7 @@ PyElastica is developed by the [Gazzola Lab][link-lab-website] at the University
 
 We ask that any publications which use Elastica cite the following papers:
 
-Overall and for single rods:  
+Overall and for single rods:
 Gazzola, Dudte, McCormick, Mahadevan, <strong>Forward and inverse problems in the mechanics of soft filaments</strong>, Royal Society Open Science, 2018. doi: [10.1098/rsos.171628](https://doi.org/10.1098/rsos.171628)
 ```
 @article{Gazzola2018,
@@ -65,7 +68,7 @@ Gazzola, Dudte, McCormick, Mahadevan, <strong>Forward and inverse problems in th
 }
 ```
 
-For assemblies of rods:  
+For assemblies of rods:
 Zhang, Chan, Parthasarathy, Gazzola, <strong>Modeling and simulation of complex dynamic musculoskeletal architectures</strong>, Nature Communications, 2019. doi: [10.1038/s41467-019-12759-5](https://doi.org/10.1038/s41467-019-12759-5)
 ```
 @article{Zhang2019,

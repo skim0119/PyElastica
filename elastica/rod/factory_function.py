@@ -71,9 +71,9 @@ def allocate(
             atol=Tolerance.atol(),
             err_msg=(" Rod normal and tangent are not perpendicular to each other!"),
         )
-        directors[0, ...] = normal_collection
-        directors[1, ...] = _batch_cross(tangents, normal_collection)
-        directors[2, ...] = tangents
+        directors[:, 0, ...] = normal_collection
+        directors[:, 1, ...] = _batch_cross(tangents, normal_collection)
+        directors[:, 2, ...] = tangents
     _directors_validity_checker(directors, tangents, n_elements)
 
     # Set radius array
@@ -336,9 +336,9 @@ def _directors_validity_checker(directors, tangents, n_elements):
     )
 
     # Check if d1, d2, d3 are unit vectors
-    d1 = directors[0, ...]
-    d2 = directors[1, ...]
-    d3 = directors[2, ...]
+    d1 = directors[:, 0, ...]
+    d2 = directors[:, 1, ...]
+    d3 = directors[:, 2, ...]
     assert_allclose(
         _batch_norm(d1),
         np.ones((n_elements)),
