@@ -1,18 +1,16 @@
-__doc__ = """Rolling friction validation, for detailed explanation refer to Gazzola et. al. R. Soc. 2018  
+__doc__ = """Rolling friction validation, for detailed explanation refer to Gazzola et. al. R. Soc. 2018
 section 4.1.4 and Appendix G """
 
 import numpy as np
-import sys
-
-# FIXME without appending sys.path make it more generic
-sys.path.append("../../")
-from elastica import *
+import elastica as ea
 from examples.FrictionValidationCases.friction_validation_postprocessing import (
     plot_friction_validation,
 )
 
 
-class RollingFrictionTorqueSimulator(BaseSystemCollection, Constraints, Forcing):
+class RollingFrictionTorqueSimulator(
+    ea.BaseSystemCollection, ea.Constraints, ea.Forcing, ea.Contact
+):
     pass
 
 
@@ -33,10 +31,9 @@ def simulate_rolling_friction_torque_with(C_s=0.0):
     normal = np.array([0.0, 1.0, 0.0])
     base_length = 1.0
     base_radius = 0.025
-    base_area = np.pi * base_radius ** 2
+    base_area = np.pi * base_radius**2
     mass = 1.0
     density = mass / (base_length * base_area)
-    nu = 1e-6
     E = 1e9
     # For shear modulus of 2E/3
     poisson_ratio = 0.5
@@ -45,7 +42,7 @@ def simulate_rolling_friction_torque_with(C_s=0.0):
     # Set shear matrix
     shear_matrix = np.repeat(1e4 * np.identity((3))[:, :, np.newaxis], n_elem, axis=2)
 
-    shearable_rod = CosseratRod.straight_rod(
+    shearable_rod = ea.CosseratRod.straight_rod(
         n_elem,
         start,
         direction,
@@ -53,8 +50,7 @@ def simulate_rolling_friction_torque_with(C_s=0.0):
         base_length,
         base_radius,
         density,
-        nu,
-        E,
+        youngs_modulus=E,
         shear_modulus=shear_modulus,
     )
 
@@ -62,17 +58,17 @@ def simulate_rolling_friction_torque_with(C_s=0.0):
     shearable_rod.shear_matrix = shear_matrix
 
     rolling_friction_torque_sim.append(shearable_rod)
-    rolling_friction_torque_sim.constrain(shearable_rod).using(FreeBC)
+    rolling_friction_torque_sim.constrain(shearable_rod).using(ea.FreeBC)
 
     # Add gravitational forces
     gravitational_acc = -9.80665
     rolling_friction_torque_sim.add_forcing_to(shearable_rod).using(
-        GravityForces, acc_gravity=np.array([0.0, gravitational_acc, 0.0])
+        ea.GravityForces, acc_gravity=np.array([0.0, gravitational_acc, 0.0])
     )
 
     # Add Uniform torque on the rod
     rolling_friction_torque_sim.add_forcing_to(shearable_rod).using(
-        UniformTorques, torque=1.0 * C_s, direction=direction
+        ea.UniformTorques, torque=1.0 * C_s, direction=direction
     )
 
     # Add friction forces
@@ -82,25 +78,28 @@ def simulate_rolling_friction_torque_with(C_s=0.0):
     static_mu_array = np.array([0.4, 0.4, 0.4])  # [forward, backward, sideways]
     kinetic_mu_array = np.array([0.2, 0.2, 0.2])  # [forward, backward, sideways]
 
-    rolling_friction_torque_sim.add_forcing_to(shearable_rod).using(
-        AnisotropicFrictionalPlane,
+    friction_plane = ea.Plane(plane_origin=origin_plane, plane_normal=normal_plane)
+    rolling_friction_torque_sim.append(friction_plane)
+
+    rolling_friction_torque_sim.detect_contact_between(
+        shearable_rod, friction_plane
+    ).using(
+        ea.RodPlaneContactWithAnisotropicFriction,
         k=10.0,
         nu=1e-4,
-        plane_origin=origin_plane,
-        plane_normal=normal_plane,
         slip_velocity_tol=slip_velocity_tol,
         static_mu_array=static_mu_array,
         kinetic_mu_array=kinetic_mu_array,
     )
 
     rolling_friction_torque_sim.finalize()
-    timestepper = PositionVerlet()
+    timestepper = ea.PositionVerlet()
 
     final_time = 1.0
     dt = 1e-6
     total_steps = int(final_time / dt)
     print("Total steps", total_steps)
-    integrate(timestepper, rolling_friction_torque_sim, final_time, total_steps)
+    ea.integrate(timestepper, rolling_friction_torque_sim, final_time, total_steps)
 
     # compute translational and rotational energy
     translational_energy = shearable_rod.compute_translational_energy()
@@ -110,7 +109,7 @@ def simulate_rolling_friction_torque_with(C_s=0.0):
     force_slip = static_mu_array[2] * mass * gravitational_acc
     force_noslip = 2.0 * C_s / (3.0 * base_radius)
 
-    mass_moment_of_inertia = 0.5 * mass * base_radius ** 2
+    mass_moment_of_inertia = 0.5 * mass * base_radius**2
 
     if np.abs(force_noslip) <= np.abs(force_slip):
         analytical_translational_energy = (
@@ -119,7 +118,7 @@ def simulate_rolling_friction_torque_with(C_s=0.0):
         analytical_rotational_energy = (
             2.0
             * mass_moment_of_inertia
-            * (final_time * C_s / (3.0 * base_radius ** 2 * mass)) ** 2
+            * (final_time * C_s / (3.0 * base_radius**2 * mass)) ** 2
         )
     else:
         analytical_translational_energy = (
@@ -128,7 +127,7 @@ def simulate_rolling_friction_torque_with(C_s=0.0):
         analytical_rotational_energy = (
             (C_s - kinetic_mu_array[2] * mass * np.abs(gravitational_acc) * base_radius)
             ** 2
-            * final_time ** 2
+            * final_time**2
             / (2.0 * mass_moment_of_inertia)
         )
 

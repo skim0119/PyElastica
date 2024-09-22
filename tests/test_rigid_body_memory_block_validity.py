@@ -47,32 +47,11 @@ def test_block_structure_scalar_validity(n_rods):
     """
 
     world_bodies = [MockRigidBody() for _ in range(n_rods)]
-    block_structure = MemoryBlockRigidBody(world_bodies)
+    block_structure = MemoryBlockRigidBody(
+        world_bodies, [i for i in range(len(world_bodies))]
+    )
 
     for i in range(n_rods):
-
-        # radius
-        assert np.shares_memory(block_structure.radius, world_bodies[i].radius)
-        assert np.shares_memory(
-            block_structure.scalar_dofs_in_rigid_bodies, world_bodies[i].radius
-        )
-        assert_allclose(
-            block_structure.radius[i : i + 1],
-            world_bodies[i].radius,
-            atol=Tolerance.atol(),
-        )
-
-        # length
-        assert np.shares_memory(block_structure.length, world_bodies[i].length)
-        assert np.shares_memory(
-            block_structure.scalar_dofs_in_rigid_bodies, world_bodies[i].length
-        )
-        assert_allclose(
-            block_structure.length[i : i + 1],
-            world_bodies[i].length,
-            atol=Tolerance.atol(),
-        )
-
         # density
         assert np.shares_memory(block_structure.density, world_bodies[i].density)
         assert np.shares_memory(
@@ -124,7 +103,9 @@ def test_block_structure_vectors_validity(n_rods):
 
     """
     world_bodies = [MockRigidBody() for _ in range(n_rods)]
-    block_structure = MemoryBlockRigidBody(world_bodies)
+    block_structure = MemoryBlockRigidBody(
+        world_bodies, [i for i in range(len(world_bodies))]
+    )
 
     for i in range(n_rods):
 
@@ -184,7 +165,9 @@ def test_block_structure_matrix_validity(n_rods):
 
     """
     world_bodies = [MockRigidBody() for _ in range(n_rods)]
-    block_structure = MemoryBlockRigidBody(world_bodies)
+    block_structure = MemoryBlockRigidBody(
+        world_bodies, [i for i in range(len(world_bodies))]
+    )
 
     for i in range(n_rods):
         # director collection
@@ -246,7 +229,9 @@ def test_block_structure_symplectic_stepper_variables_validity(n_rods):
 
     """
     world_bodies = [MockRigidBody() for _ in range(n_rods)]
-    block_structure = MemoryBlockRigidBody(world_bodies)
+    block_structure = MemoryBlockRigidBody(
+        world_bodies, [i for i in range(len(world_bodies))]
+    )
 
     for i in range(n_rods):
 

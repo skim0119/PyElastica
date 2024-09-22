@@ -1,11 +1,8 @@
 __doc__ = """Snake friction case from X. Zhang et. al. Nat. Comm. 2021"""
 
-import sys
 import os
 import numpy as np
-
-sys.path.append("../../")
-from elastica import *
+import elastica as ea
 
 from examples.ContinuumSnakeCase.continuum_snake_postprocessing import (
     plot_snake_velocity,
@@ -15,7 +12,14 @@ from examples.ContinuumSnakeCase.continuum_snake_postprocessing import (
 )
 
 
-class SnakeSimulator(BaseSystemCollection, Constraints, Forcing, CallBacks):
+class SnakeSimulator(
+    ea.BaseSystemCollection,
+    ea.Constraints,
+    ea.Forcing,
+    ea.Damping,
+    ea.CallBacks,
+    ea.Contact,
+):
     pass
 
 
@@ -28,10 +32,6 @@ def run_snake(
     # Simulation parameters
     period = 2
     final_time = (11.0 + 0.01) * period
-    time_step = 8e-6
-    total_steps = int(final_time / time_step)
-    rendering_fps = 60
-    step_skip = int(1.0 / (rendering_fps * time_step))
 
     # setting up test params
     n_elem = 50
@@ -41,12 +41,11 @@ def run_snake(
     base_length = 0.35
     base_radius = base_length * 0.011
     density = 1000
-    nu = 1e-4
     E = 1e6
     poisson_ratio = 0.5
     shear_modulus = E / (poisson_ratio + 1.0)
 
-    shearable_rod = CosseratRod.straight_rod(
+    shearable_rod = ea.CosseratRod.straight_rod(
         n_elem,
         start,
         direction,
@@ -54,8 +53,7 @@ def run_snake(
         base_length,
         base_radius,
         density,
-        nu,
-        E,
+        youngs_modulus=E,
         shear_modulus=shear_modulus,
     )
 
@@ -64,13 +62,13 @@ def run_snake(
     # Add gravitational forces
     gravitational_acc = -9.80665
     snake_sim.add_forcing_to(shearable_rod).using(
-        GravityForces, acc_gravity=np.array([0.0, gravitational_acc, 0.0])
+        ea.GravityForces, acc_gravity=np.array([0.0, gravitational_acc, 0.0])
     )
 
     # Add muscle torques
     wave_length = b_coeff[-1]
     snake_sim.add_forcing_to(shearable_rod).using(
-        MuscleTorques,
+        ea.MuscleTorques,
         base_length=base_length,
         b_coeff=b_coeff[:-1],
         period=period,
@@ -83,8 +81,10 @@ def run_snake(
     )
 
     # Add friction forces
-    origin_plane = np.array([0.0, -base_radius, 0.0])
-    normal_plane = normal
+    ground_plane = ea.Plane(
+        plane_origin=np.array([0.0, -base_radius, 0.0]), plane_normal=normal
+    )
+    snake_sim.append(ground_plane)
     slip_velocity_tol = 1e-8
     froude = 0.1
     mu = base_length / (period * period * np.abs(gravitational_acc) * froude)
@@ -92,25 +92,36 @@ def run_snake(
         [mu, 1.5 * mu, 2.0 * mu]
     )  # [forward, backward, sideways]
     static_mu_array = np.zeros(kinetic_mu_array.shape)
-    snake_sim.add_forcing_to(shearable_rod).using(
-        AnisotropicFrictionalPlane,
+    snake_sim.detect_contact_between(shearable_rod, ground_plane).using(
+        ea.RodPlaneContactWithAnisotropicFriction,
         k=1.0,
         nu=1e-6,
-        plane_origin=origin_plane,
-        plane_normal=normal_plane,
         slip_velocity_tol=slip_velocity_tol,
         static_mu_array=static_mu_array,
         kinetic_mu_array=kinetic_mu_array,
     )
 
+    # add damping
+    damping_constant = 2e-3
+    time_step = 1e-4
+    snake_sim.dampen(shearable_rod).using(
+        ea.AnalyticalLinearDamper,
+        damping_constant=damping_constant,
+        time_step=time_step,
+    )
+
+    total_steps = int(final_time / time_step)
+    rendering_fps = 60
+    step_skip = int(1.0 / (rendering_fps * time_step))
+
     # Add call backs
-    class ContinuumSnakeCallBack(CallBackBaseClass):
+    class ContinuumSnakeCallBack(ea.CallBackBaseClass):
         """
         Call back function for continuum snake
         """
 
         def __init__(self, step_skip: int, callback_params: dict):
-            CallBackBaseClass.__init__(self)
+            ea.CallBackBaseClass.__init__(self)
             self.every = step_skip
             self.callback_params = callback_params
 
@@ -137,15 +148,15 @@ def run_snake(
 
                 return
 
-    pp_list = defaultdict(list)
+    pp_list = ea.defaultdict(list)
     snake_sim.collect_diagnostics(shearable_rod).using(
         ContinuumSnakeCallBack, step_skip=step_skip, callback_params=pp_list
     )
 
     snake_sim.finalize()
 
-    timestepper = PositionVerlet()
-    integrate(timestepper, snake_sim, final_time, total_steps)
+    timestepper = ea.PositionVerlet()
+    ea.integrate(timestepper, snake_sim, final_time, total_steps)
 
     if PLOT_FIGURE:
         filename_plot = "continuum_snake_velocity.png"

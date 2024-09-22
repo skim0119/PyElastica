@@ -1,3 +1,119 @@
+# Release 0.3.2
+
+## New Features
+
+* Rod sphere contact by @Rahul-JOON in https://github.com/GazzolaLab/PyElastica/pull/298 and @Ali-7800 in https://github.com/GazzolaLab/PyElastica/pull/301
+* Importing mesh capability is implemented @Rahul-JOON in https://github.com/GazzolaLab/PyElastica/pull/275, https://github.com/GazzolaLab/PyElastica/pull/277, https://github.com/GazzolaLab/PyElastica/pull/283
+
+## What's Changed
+
+* Contact unit tests were implemented @Rahul-JOON in https://github.com/GazzolaLab/PyElastica/pull/257, https://github.com/GazzolaLab/PyElastica/pull/258, https://github.com/GazzolaLab/PyElastica/pull/260, https://github.com/GazzolaLab/PyElastica/pull/261, https://github.com/GazzolaLab/PyElastica/pull/262, https://github.com/GazzolaLab/PyElastica/pull/267, https://github.com/GazzolaLab/PyElastica/pull/269, https://github.com/GazzolaLab/PyElastica/pull/274
+* Contact functions refactored and moved to a standalone contact module @Ali-7800 in https://github.com/GazzolaLab/PyElastica/pull/281, https://github.com/GazzolaLab/PyElastica/pull/291, https://github.com/GazzolaLab/PyElastica/pull/293, https://github.com/GazzolaLab/PyElastica/pull/314, https://github.com/GazzolaLab/PyElastica/pull/316, https://github.com/GazzolaLab/PyElastica/pull/317, https://github.com/GazzolaLab/PyElastica/pull/328
+* Memory block refactor by @sy-cui in https://github.com/GazzolaLab/PyElastica/pull/296
+* New example Continuum Snake With Lifting Wave added by @Ali-7800 in https://github.com/GazzolaLab/PyElastica/pull/317
+* Catenary curve validation  by @Ali-7800 in https://github.com/GazzolaLab/PyElastica/pull/335
+
+## Minor Fixes
+
+* Fix links in README.md by @tokoro10g in https://github.com/GazzolaLab/PyElastica/pull/256
+* Fix knot theory functionalities import by @Ali-7800 in https://github.com/GazzolaLab/PyElastica/pull/268
+* Binder snake example bug fix by @Ali-7800 in https://github.com/GazzolaLab/PyElastica/pull/330
+* Binder environment setup fix  by @Ali-7800 in https://github.com/GazzolaLab/PyElastica/pull/340
+
+## Repository Update
+
+* Python 3.11 support by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/307
+
+
+## New Contributors
+
+* @tokoro10g made their first contribution in https://github.com/GazzolaLab/PyElastica/pull/256
+* @Ali-7800 made their first contribution in https://github.com/GazzolaLab/PyElastica/pull/268
+
+**Full Changelog**: https://github.com/GazzolaLab/PyElastica/compare/v0.3.1...v0.3.2
+
+
+# Release 0.3.1
+
+## New Features
+
+* Ring Cosserat rods by @armantekinalp in https://github.com/GazzolaLab/PyElastica/pull/229
+* Magnetic Cosserat rods functionality by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/245
+
+## What's Changed
+
+* Dynamic validation example by @sy-cui in https://github.com/GazzolaLab/PyElastica/pull/173
+* Refactor: change typings in forcing/constraints/connections to SystemType or RodType by @sy-cui in https://github.com/GazzolaLab/PyElastica/pull/191
+* Wildcard imports removed by @AsadNizami in https://github.com/GazzolaLab/PyElastica/pull/238
+* Remove internal damping option for Cosserat rod by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/243
+
+## Minor Fixes
+
+* Fix main yml windows python version by @armantekinalp in https://github.com/GazzolaLab/PyElastica/pull/206
+* Fix restart functionality by @armantekinalp in https://github.com/GazzolaLab/PyElastica/pull/249
+* Replaced 'moviepy' with 'ffmpeg' for video generation by @Rahul-JOON in https://github.com/GazzolaLab/PyElastica/pull/232
+
+## Repository Update
+
+* Windows CI fix by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/192
+* autoflake funtionality by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/175
+
+## New Contributors
+
+* @sy-cui made their first contribution in https://github.com/GazzolaLab/PyElastica/pull/173
+* @Rahul-JOON made their first contribution in https://github.com/GazzolaLab/PyElastica/pull/232
+* @AsadNizami made their first contribution in https://github.com/GazzolaLab/PyElastica/pull/238
+* @erfanhamdi made their first contribution in https://github.com/GazzolaLab/PyElastica/pull/247
+
+**Full Changelog**: https://github.com/GazzolaLab/PyElastica/compare/v0.3.0...v0.3.1
+
+
+# Release v0.3.0
+
+## New Features
+
+* Refactor internal dissipation as external addon damping module  by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/114
+  - New AnalyticalDamper
+  * Update timestep values for the new damping module by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/120
+* Filter Damper class by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/123
+* Adding `ConfigurableFixedConstraint` boundary condition class by @mstoelzle in https://github.com/GazzolaLab/PyElastica/pull/143
+
+## What's Changed
+
+* Adds significant digits to shear coefficient (Alpha) (#79) by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/82
+* Dissipation constant fix (#81) by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/87
+  - Scale dissipation constant by mass instead of length.
+* Update FixedJoints: restoring spring-damped-torques, initial rotation offset by @mstoelzle in https://github.com/GazzolaLab/PyElastica/pull/135
+* Update: Damping values for rod-rigid body contact cases (#171) by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/172
+* Fix damping force direction by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/170
+* Refactor: `wrappers` -> `modules` by @skim0119 in https://github.com/GazzolaLab/PyElastica/pull/177
+
+## Minor Fixes
+
+* Fix compute shear energy function typo by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/88
+* Track velocity norms as dynamic proxies in Axial stretching and Timoshenko examples by @tp5uiuc in https://github.com/GazzolaLab/PyElastica/pull/97
+* Node to element interpolation fix by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/98
+* Update: numba disable jit flag in poetry command by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/146
+* Adjusting data structure of `fixed_positions` and `fixed_directors` by @mstoelzle in https://github.com/GazzolaLab/PyElastica/pull/147
+* Docs: correct endpoint forces docstring by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/157
+* Update: remove sys append calls in examples by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/162
+
+## New Experimental Features
+
+* Enabling joints to connect rods and rigid bodies  by @mstoelzle in https://github.com/GazzolaLab/PyElastica/pull/149
+
+## Repository Updates
+
+* Codeowners setup by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/115
+* Remove _elastica_numba folder while keeping _elastica_numba.py by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/138
+* Update CI: Add sphinx build by @skim0119 in https://github.com/GazzolaLab/PyElastica/pull/139
+* Poetry setup for PyElastica (#101) by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/141
+* Add pre commit to pyelastica by @bhosale2 in https://github.com/GazzolaLab/PyElastica/pull/151
+* Update makefile commands: test by @skim0119 in https://github.com/GazzolaLab/PyElastica/pull/156
+
+**Full Changelog**: https://github.com/GazzolaLab/PyElastica/compare/v0.2.4...v0.3.0
+
+
 # Release Note (version 0.2.4)
 
 ## What's Changed

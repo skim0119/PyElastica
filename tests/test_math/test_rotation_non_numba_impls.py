@@ -16,12 +16,11 @@ from elastica._rotations import (
     _skew_symmetrize_sq,  # noqa
 )
 
-from elastica.utils import Tolerance
-
 
 ###############################################################################
 ##################### Implementation tests start ##############################
 ###############################################################################
+
 
 # Cross products only make sense till dim = 3 (dim = 7 is an exception)
 @pytest.mark.parametrize("dim", [2, 3])

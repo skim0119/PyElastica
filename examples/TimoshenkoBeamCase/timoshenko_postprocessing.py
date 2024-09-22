@@ -43,14 +43,14 @@ def analytical_unshearable(arg_rod, arg_end_force, n_elem=500):
         / arg_rod.bend_matrix[0, 0, 0]
     )
     cubic_prefactor = acting_force / 6.0 / arg_rod.bend_matrix[0, 0, 0]
-    return arg_s, arg_s ** 2 * (quadratic_prefactor + arg_s * cubic_prefactor)
+    return arg_s, arg_s**2 * (quadratic_prefactor + arg_s * cubic_prefactor)
 
 
 def plot_timoshenko(rod, end_force, SAVE_FIGURE, ADD_UNSHEARABLE_ROD=False):
     fig = plt.figure(figsize=(10, 8), frameon=True, dpi=150)
     ax = fig.add_subplot(111)
-    ax.grid(b=True, which="minor", color="k", linestyle="--")
-    ax.grid(b=True, which="major", color="k", linestyle="-")
+    ax.grid(which="minor", color="k", linestyle="--")
+    ax.grid(which="major", color="k", linestyle="-")
     analytical_shearable_positon = analytical_shearable(rod, end_force)
     ax.plot(
         analytical_shearable_positon[0],

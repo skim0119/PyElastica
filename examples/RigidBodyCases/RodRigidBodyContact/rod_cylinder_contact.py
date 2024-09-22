@@ -1,14 +1,16 @@
 import numpy as np
-import sys
-
-sys.path.append("../../../")
-from elastica import *
+import elastica as ea
 from post_processing import plot_velocity, plot_video_with_surface
 
 
 def rod_cylinder_contact_case(inclination_angle=0.0):
     class RodCylinderParallelContact(
-        BaseSystemCollection, Constraints, Connections, CallBacks, Forcing
+        ea.BaseSystemCollection,
+        ea.Constraints,
+        ea.Contact,
+        ea.CallBacks,
+        ea.Forcing,
+        ea.Damping,
     ):
         pass
 
@@ -16,7 +18,7 @@ def rod_cylinder_contact_case(inclination_angle=0.0):
 
     # time step etc
     final_time = 10.0
-    time_step = 1e-4
+    time_step = 5e-4
     total_steps = int(final_time / time_step) + 1
     rendering_fps = 30  # 20 * 1e1
     step_skip = int(1.0 / (rendering_fps * time_step))
@@ -28,12 +30,11 @@ def rod_cylinder_contact_case(inclination_angle=0.0):
     poisson_ratio = 0.5
     shear_modulus = E / (2 * (1 + poisson_ratio))
     n_elem = 50
-    nu = 0.5
     start = np.zeros((3,))
     direction = np.array([np.sin(inclination_angle), 0.0, np.cos(inclination_angle)])
     normal = np.array([0.0, 1.0, 0.0])
 
-    rod = CosseratRod.straight_rod(
+    rod = ea.CosseratRod.straight_rod(
         n_elem,
         start,
         direction,
@@ -41,8 +42,7 @@ def rod_cylinder_contact_case(inclination_angle=0.0):
         base_length,
         base_radius,
         density,
-        nu,
-        E,
+        youngs_modulus=E,
         shear_modulus=shear_modulus,
     )
 
@@ -56,7 +56,7 @@ def rod_cylinder_contact_case(inclination_angle=0.0):
     cylinder_direction = np.array([0.0, 0.0, 1.0])
     cylinder_normal = np.array([0.0, 1.0, 0.0])
 
-    rigid_body = Cylinder(
+    rigid_body = ea.Cylinder(
         start=cylinder_start,
         direction=cylinder_direction,
         normal=cylinder_normal,
@@ -67,22 +67,33 @@ def rod_cylinder_contact_case(inclination_angle=0.0):
     rod_cylinder_parallel_contact_simulator.append(rigid_body)
 
     # Add contact between rigid body and rod
-    rod_cylinder_parallel_contact_simulator.connect(rod, rigid_body).using(
-        ExternalContact,
+    rod_cylinder_parallel_contact_simulator.detect_contact_between(
+        rod, rigid_body
+    ).using(
+        ea.RodCylinderContact,
         k=5e4,
         nu=0.1,
     )
 
+    # add damping
+    damping_constant = 1e-2
+    rod_cylinder_parallel_contact_simulator.dampen(rod).using(
+        ea.AnalyticalLinearDamper,
+        damping_constant=damping_constant,
+        time_step=time_step,
+    )
+
     # Add callbacks
     post_processing_dict_list = []
+
     # For rod
-    class StraightRodCallBack(CallBackBaseClass):
+    class StraightRodCallBack(ea.CallBackBaseClass):
         """
         Call back function for two arm octopus
         """
 
         def __init__(self, step_skip: int, callback_params: dict):
-            CallBackBaseClass.__init__(self)
+            ea.CallBackBaseClass.__init__(self)
             self.every = step_skip
             self.callback_params = callback_params
 
@@ -116,7 +127,7 @@ def rod_cylinder_contact_case(inclination_angle=0.0):
 
                 return
 
-    class RigidCylinderCallBack(CallBackBaseClass):
+    class RigidCylinderCallBack(ea.CallBackBaseClass):
         """
         Call back function for two arm octopus
         """
@@ -124,7 +135,7 @@ def rod_cylinder_contact_case(inclination_angle=0.0):
         def __init__(
             self, step_skip: int, callback_params: dict, resize_cylinder_elems: int
         ):
-            CallBackBaseClass.__init__(self)
+            ea.CallBackBaseClass.__init__(self)
             self.every = step_skip
             self.callback_params = callback_params
             self.n_elem_cylinder = resize_cylinder_elems
@@ -187,14 +198,14 @@ def rod_cylinder_contact_case(inclination_angle=0.0):
 
                 return
 
-    post_processing_dict_list.append(defaultdict(list))
+    post_processing_dict_list.append(ea.defaultdict(list))
     rod_cylinder_parallel_contact_simulator.collect_diagnostics(rod).using(
         StraightRodCallBack,
         step_skip=step_skip,
         callback_params=post_processing_dict_list[0],
     )
     # For rigid body
-    post_processing_dict_list.append(defaultdict(list))
+    post_processing_dict_list.append(ea.defaultdict(list))
     rod_cylinder_parallel_contact_simulator.collect_diagnostics(rigid_body).using(
         RigidCylinderCallBack,
         step_skip=step_skip,
@@ -203,9 +214,9 @@ def rod_cylinder_contact_case(inclination_angle=0.0):
     )
 
     rod_cylinder_parallel_contact_simulator.finalize()
-    timestepper = PositionVerlet()
+    timestepper = ea.PositionVerlet()
 
-    integrate(
+    ea.integrate(
         timestepper, rod_cylinder_parallel_contact_simulator, final_time, total_steps
     )
 

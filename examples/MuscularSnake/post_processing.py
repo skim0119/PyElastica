@@ -5,7 +5,6 @@ matplotlib.use("Agg")  # Must be before importing matplotlib.pyplot or pylab!
 from matplotlib import pyplot as plt
 from matplotlib.colors import to_rgb
 from matplotlib import cm
-from mpl_toolkits.mplot3d import proj3d, Axes3D
 from tqdm import tqdm
 
 from typing import Dict, Sequence
@@ -118,7 +117,7 @@ def plot_video_with_surface(
         video_name_3D = folder_name + "3D_" + video_name
 
         with writer.saving(fig, video_name_3D, dpi):
-            with plt.style.context("seaborn-whitegrid"):
+            with plt.style.context("seaborn-v0_8-whitegrid"):
                 for time_idx in tqdm(range(0, sim_time.shape[0], int(step))):
 
                     for rod_idx in range(n_visualized_rods):
@@ -209,7 +208,7 @@ def plot_video_with_surface(
         video_name_2D = folder_name + "2D_xy_" + video_name
 
         with writer.saving(fig, video_name_2D, dpi):
-            with plt.style.context("seaborn-whitegrid"):
+            with plt.style.context("seaborn-v0_8-whitegrid"):
                 for time_idx in tqdm(range(0, sim_time.shape[0], int(step))):
 
                     for rod_idx in range(n_visualized_rods):
@@ -300,7 +299,7 @@ def plot_video_with_surface(
         video_name_2D = folder_name + "2D_zy_" + video_name
 
         with writer.saving(fig, video_name_2D, dpi):
-            with plt.style.context("seaborn-whitegrid"):
+            with plt.style.context("seaborn-v0_8-whitegrid"):
                 for time_idx in tqdm(range(0, sim_time.shape[0], int(step))):
 
                     for rod_idx in range(n_visualized_rods):
@@ -393,7 +392,7 @@ def plot_video_with_surface(
         video_name_2D = folder_name + "2D_xz_" + video_name
 
         with writer.saving(fig, video_name_2D, dpi):
-            with plt.style.context("seaborn-whitegrid"):
+            with plt.style.context("seaborn-v0_8-whitegrid"):
                 for time_idx in tqdm(range(0, sim_time.shape[0], int(step))):
 
                     for rod_idx in range(n_visualized_rods):
@@ -455,8 +454,8 @@ def plot_snake_velocity(
 
     fig = plt.figure(figsize=(10, 8), frameon=True, dpi=150)
     ax = fig.add_subplot(111)
-    ax.grid(b=True, which="minor", color="k", linestyle="--")
-    ax.grid(b=True, which="major", color="k", linestyle="-")
+    ax.grid(which="minor", color="k", linestyle="--")
+    ax.grid(which="major", color="k", linestyle="-")
     ax.plot(
         time_per_period[:], velocity_in_direction_of_rod[:, 0], "r-", label="forward"
     )

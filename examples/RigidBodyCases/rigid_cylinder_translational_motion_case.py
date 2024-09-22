@@ -1,15 +1,13 @@
-import sys
 import numpy as np
-
-sys.path.append("../../")
-
-from elastica import *
+import elastica as ea
 from examples.FrictionValidationCases.friction_validation_postprocessing import (
     plot_friction_validation,
 )
 
 
-class RigidCylinderSimulator(BaseSystemCollection, Constraints, Forcing, CallBacks):
+class RigidCylinderSimulator(
+    ea.BaseSystemCollection, ea.Constraints, ea.Forcing, ea.CallBacks
+):
     pass
 
 
@@ -38,14 +36,14 @@ def rigid_cylinder_translational_motion_verification(force=0.0):
     binormal = np.cross(direction, normal)
     base_length = 1.0
     base_radius = 0.05
-    base_area = np.pi * base_radius ** 2
+    base_area = np.pi * base_radius**2
     density = 1000
 
-    cylinder = Cylinder(start, direction, normal, base_length, base_radius, density)
+    cylinder = ea.Cylinder(start, direction, normal, base_length, base_radius, density)
 
     rigid_cylinder_sim.append(cylinder)
 
-    class PointForceToCenter(NoForces):
+    class PointForceToCenter(ea.NoForces):
         """
         Applies force on rigid body
         """
@@ -54,7 +52,7 @@ def rigid_cylinder_translational_motion_verification(force=0.0):
             super(PointForceToCenter, self).__init__()
             self.force = (force * direction).reshape(3, 1)
 
-        def apply_forces(self, system, time: np.float = 0.0):
+        def apply_forces(self, system, time: np.float64 = np.float64(0.0)):
             system.external_forces += self.force
 
     # Add point force on the rod
@@ -63,13 +61,13 @@ def rigid_cylinder_translational_motion_verification(force=0.0):
     )
 
     # Add call backs
-    class RigidSphereCallBack(CallBackBaseClass):
+    class RigidSphereCallBack(ea.CallBackBaseClass):
         """
         Call back function
         """
 
         def __init__(self, step_skip: int, callback_params: dict):
-            CallBackBaseClass.__init__(self)
+            ea.CallBackBaseClass.__init__(self)
             self.every = step_skip
             self.callback_params = callback_params
 
@@ -87,25 +85,25 @@ def rigid_cylinder_translational_motion_verification(force=0.0):
             return
 
     step_skip = 200
-    pp_list = defaultdict(list)
+    pp_list = ea.defaultdict(list)
     rigid_cylinder_sim.collect_diagnostics(cylinder).using(
         RigidSphereCallBack, step_skip=step_skip, callback_params=pp_list
     )
 
     rigid_cylinder_sim.finalize()
-    timestepper = PositionVerlet()
+    timestepper = ea.PositionVerlet()
 
     final_time = 0.25
     dt = 4.0e-5
     total_steps = int(final_time / dt)
     print("Total steps", total_steps)
-    integrate(timestepper, rigid_cylinder_sim, final_time, total_steps)
+    ea.integrate(timestepper, rigid_cylinder_sim, final_time, total_steps)
 
     # compute translational and rotational energy
     translational_energy = cylinder.compute_translational_energy()
     rotational_energy = cylinder.compute_rotational_energy()
     # compute translational and rotational energy using analytical equations
-    mass = np.pi * base_radius ** 2 * base_length * density
+    mass = np.pi * base_radius**2 * base_length * density
 
     analytical_translational_energy = 0.5 * mass * (force / mass * final_time) ** 2
     analytical_rotational_energy = 0.0

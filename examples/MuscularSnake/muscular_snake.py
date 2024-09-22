@@ -1,9 +1,6 @@
 __doc__ = """Muscular snake example from Zhang et. al. Nature Comm 2019 paper."""
-import sys
 import numpy as np
-
-sys.path.append("../../")
-from elastica import *
+import elastica as ea
 from examples.MuscularSnake.post_processing import (
     plot_video_with_surface,
     plot_snake_velocity,
@@ -17,7 +14,13 @@ from elastica.experimental.connection_contact_joint.parallel_connection import (
 
 # Set base simulator class
 class MuscularSnakeSimulator(
-    BaseSystemCollection, Constraints, Connections, Forcing, CallBacks
+    ea.BaseSystemCollection,
+    ea.Constraints,
+    ea.Connections,
+    ea.Forcing,
+    ea.CallBacks,
+    ea.Damping,
+    ea.Contact,
 ):
     pass
 
@@ -42,12 +45,13 @@ E = 1e7
 nu = 4e-3
 shear_modulus = E / 2 * (0.5 + 1.0)
 poisson_ratio = 0.5
+nu_body = nu / density_body / (np.pi * base_radius_body**2)
 
 direction = np.array([1.0, 0.0, 0.0])
 normal = np.array([0.0, 0.0, 1.0])
 start = np.array([0.0, 0.0, base_radius_body])
 
-snake_body = CosseratRod.straight_rod(
+snake_body = ea.CosseratRod.straight_rod(
     n_elem_body,
     start,
     direction,
@@ -55,7 +59,6 @@ snake_body = CosseratRod.straight_rod(
     base_length_body,
     base_radius_body,
     density_body,
-    nu,
     youngs_modulus=E,
     shear_modulus=shear_modulus,
 )
@@ -93,7 +96,7 @@ shear_modulus_muscle = E_muscle / 2 * (0.5 + 1.0)
 # Muscle group 1 and 3, define two antagonistic muscle pairs
 n_elem_muscle_group_one_to_three = 13 * 3
 base_length_muscle = 0.39
-"""  
+"""
 In our simulation, we lump many biological tendons into one computational
 tendon. As a result, our computational tendon is bigger in size, set as elements other than 4-8
 below.
@@ -101,6 +104,7 @@ below.
 muscle_radius = np.zeros((n_elem_muscle_group_one_to_three))
 muscle_radius[:] = 0.003  # First set tendon radius for whole rod.
 muscle_radius[4 * 3 : 9 * 3] = 0.006  # Change the radius of muscle elements
+nu_muscle /= density_muscle * np.pi * 0.003**2
 
 for i in range(int(n_muscle_fibers / 2)):
 
@@ -116,7 +120,7 @@ for i in range(int(n_muscle_fibers / 2)):
         ]
     )
 
-    muscle_rod = CosseratRod.straight_rod(
+    muscle_rod = ea.CosseratRod.straight_rod(
         n_elem_muscle_group_one_to_three,
         start_muscle,
         direction,
@@ -124,7 +128,6 @@ for i in range(int(n_muscle_fibers / 2)):
         base_length_muscle,
         muscle_radius,
         density_muscle,
-        nu_muscle,
         youngs_modulus=E_muscle,
         shear_modulus=shear_modulus_muscle,
     )
@@ -148,8 +151,8 @@ for i in range(int(n_muscle_fibers / 2)):
     muscle_glue_connection_index.append(
         np.hstack(
             (
-                np.arange(0, 4 * 3, 1, dtype=np.int64),
-                np.arange(9 * 3, n_elem_muscle_group_one_to_three, 1, dtype=np.int64),
+                np.arange(0, 4 * 3, 1, dtype=np.int32),
+                np.arange(9 * 3, n_elem_muscle_group_one_to_three, 1, dtype=np.int32),
             )
         )
     )
@@ -181,7 +184,7 @@ for i in range(int(n_muscle_fibers / 2), n_muscle_fibers):
         ]
     )
 
-    muscle_rod = CosseratRod.straight_rod(
+    muscle_rod = ea.CosseratRod.straight_rod(
         n_elem_muscle_group_two_to_four,
         start_muscle,
         direction,
@@ -189,7 +192,6 @@ for i in range(int(n_muscle_fibers / 2), n_muscle_fibers):
         base_length_muscle,
         muscle_radius,
         density_muscle,
-        nu_muscle,
         youngs_modulus=E_muscle,
         shear_modulus=shear_modulus_muscle,
     )
@@ -211,11 +213,11 @@ for i in range(int(n_muscle_fibers / 2), n_muscle_fibers):
     muscle_rod_list.append(muscle_rod)
     muscle_end_connection_index.append(index + n_elem_muscle_group_two_to_four)
     muscle_glue_connection_index.append(
-        # np.array([0,1, 2, 3, 9, 10 ], dtype=np.int)
+        # np.array([0,1, 2, 3, 9, 10 ], dtype=np.int32)
         np.hstack(
             (
-                np.arange(0, 4 * 3, 1, dtype=np.int64),
-                np.arange(9 * 3, n_elem_muscle_group_two_to_four, 1, dtype=np.int64),
+                np.arange(0, 4 * 3, 1, dtype=np.int32),
+                np.arange(9 * 3, n_elem_muscle_group_two_to_four, 1, dtype=np.int32),
             )
         )
     )
@@ -227,11 +229,26 @@ rod_list = rod_list + muscle_rod_list
 for _, my_rod in enumerate(rod_list):
     muscular_snake_simulator.append(my_rod)
 
+# Add dissipation to backbone
+muscular_snake_simulator.dampen(snake_body).using(
+    ea.AnalyticalLinearDamper,
+    damping_constant=nu_body,
+    time_step=time_step,
+)
+
+# Add dissipation to muscles
+for rod in rod_list:
+    muscular_snake_simulator.dampen(rod).using(
+        ea.AnalyticalLinearDamper,
+        damping_constant=nu_muscle,
+        time_step=time_step,
+    )
+
 # Muscle actuation
 post_processing_forces_dict_list = []
 
 for i in range(n_muscle_fibers):
-    post_processing_forces_dict_list.append(defaultdict(list))
+    post_processing_forces_dict_list.append(ea.defaultdict(list))
     muscle_rod = muscle_rod_list[i]
     side_of_body = 1 if i % 2 == 0 else -1
 
@@ -251,7 +268,7 @@ for i in range(n_muscle_fibers):
 
 
 straight_straight_rod_connection_list = []
-straight_straight_rod_connection_post_processing_dict = defaultdict(list)
+straight_straight_rod_connection_post_processing_dict = ea.defaultdict(list)
 for idx, rod_two in enumerate(muscle_rod_list):
     rod_one = snake_body
     (
@@ -273,51 +290,49 @@ for idx, rod_two in enumerate(muscle_rod_list):
             offset_btw_rods.copy(),
         ]
     )
-    for k in range(rod_two.n_elems):
-        rod_one_index = k + muscle_start_connection_index[idx]
-        rod_two_index = k
-        k_conn = (
-            rod_one.radius[rod_one_index]
-            * rod_two.radius[rod_two_index]
-            / (rod_one.radius[rod_one_index] + rod_two.radius[rod_two_index])
-            * body_elem_length
-            * E
-            / (rod_one.radius[rod_one_index] + rod_two.radius[rod_two_index])
-        )
 
-        if k < 12 or k >= 27:
-            scale = 1 * 2
-            scale_contact = 20
-        else:
-            scale = 0.01 * 5
-            scale_contact = 20
+    ks = np.arange(rod_two.n_elems)
+    scale = np.ones(rod_two.n_elems) * 1 * 2
+    scale[12:27] = 0.01 * 5
+    scale_contact = np.ones(rod_two.n_elems) * 20
+    scale_contact[12:27] = 20
+    rod_one_index = ks + muscle_start_connection_index[idx]
+    rod_two_index = ks
+    k_conn = (
+        rod_one.radius[rod_one_index]
+        * rod_two.radius[rod_two_index]
+        / (rod_one.radius[rod_one_index] + rod_two.radius[rod_two_index])
+        * body_elem_length
+        * E
+        / (rod_one.radius[rod_one_index] + rod_two.radius[rod_two_index])
+    )
 
-        muscular_snake_simulator.connect(
-            first_rod=rod_one,
-            second_rod=rod_two,
-            first_connect_idx=rod_one_index,
-            second_connect_idx=rod_two_index,
-        ).using(
-            SurfaceJointSideBySide,
-            k=k_conn * scale,
-            nu=1e-4,
-            k_repulsive=k_conn * scale_contact,
-            rod_one_direction_vec_in_material_frame=rod_one_direction_vec_in_material_frame[
-                ..., k
-            ],
-            rod_two_direction_vec_in_material_frame=rod_two_direction_vec_in_material_frame[
-                ..., k
-            ],
-            offset_btw_rods=offset_btw_rods[k],
-            post_processing_dict=straight_straight_rod_connection_post_processing_dict,
-            step_skip=step_skip,
-        )
+    muscular_snake_simulator.connect(
+        first_rod=rod_one,
+        second_rod=rod_two,
+        first_connect_idx=rod_one_index,
+        second_connect_idx=rod_two_index,
+    ).using(
+        SurfaceJointSideBySide,
+        k=k_conn * scale,
+        nu=1e-4,
+        k_repulsive=k_conn * scale_contact,
+        rod_one_direction_vec_in_material_frame=rod_one_direction_vec_in_material_frame[
+            ..., ks
+        ],
+        rod_two_direction_vec_in_material_frame=rod_two_direction_vec_in_material_frame[
+            ..., ks
+        ],
+        offset_btw_rods=offset_btw_rods[ks],
+        post_processing_dict=straight_straight_rod_connection_post_processing_dict,
+        step_skip=step_skip,
+    )
 
 # Friction forces
 # Only apply to the snake body.
 gravitational_acc = -9.81
 muscular_snake_simulator.add_forcing_to(snake_body).using(
-    GravityForces, acc_gravity=np.array([0.0, 0.0, gravitational_acc])
+    ea.GravityForces, acc_gravity=np.array([0.0, 0.0, gravitational_acc])
 )
 
 origin_plane = np.array([0.0, 0.0, 0.0])
@@ -330,21 +345,22 @@ kinetic_mu_array = np.array(
     [1.0 * mu, 1.5 * mu, 2.0 * mu]
 )  # [forward, backward, sideways]
 static_mu_array = 2 * kinetic_mu_array
-muscular_snake_simulator.add_forcing_to(snake_body).using(
-    AnisotropicFrictionalPlane,
+friction_plane = ea.Plane(plane_origin=origin_plane, plane_normal=normal_plane)
+muscular_snake_simulator.append(friction_plane)
+
+muscular_snake_simulator.detect_contact_between(snake_body, friction_plane).using(
+    ea.RodPlaneContactWithAnisotropicFriction,
     k=1e1,
     nu=40,
-    plane_origin=origin_plane,
-    plane_normal=normal_plane,
     slip_velocity_tol=slip_velocity_tol,
     static_mu_array=static_mu_array,
     kinetic_mu_array=kinetic_mu_array,
 )
 
 
-class MuscularSnakeCallBack(CallBackBaseClass):
+class MuscularSnakeCallBack(ea.CallBackBaseClass):
     def __init__(self, step_skip: int, callback_params: dict):
-        CallBackBaseClass.__init__(self)
+        ea.CallBackBaseClass.__init__(self)
         self.every = step_skip
         self.callback_params = callback_params
 
@@ -369,7 +385,7 @@ class MuscularSnakeCallBack(CallBackBaseClass):
 post_processing_dict_list = []
 
 for idx, rod in enumerate(rod_list):
-    post_processing_dict_list.append(defaultdict(list))
+    post_processing_dict_list.append(ea.defaultdict(list))
     muscular_snake_simulator.collect_diagnostics(rod).using(
         MuscularSnakeCallBack,
         step_skip=step_skip,
@@ -377,8 +393,8 @@ for idx, rod in enumerate(rod_list):
     )
 
 muscular_snake_simulator.finalize()
-timestepper = PositionVerlet()
-integrate(timestepper, muscular_snake_simulator, final_time, total_steps)
+timestepper = ea.PositionVerlet()
+ea.integrate(timestepper, muscular_snake_simulator, final_time, total_steps)
 
 
 plot_video_with_surface(

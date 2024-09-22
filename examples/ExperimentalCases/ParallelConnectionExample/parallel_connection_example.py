@@ -1,16 +1,18 @@
 __doc__ = """Parallel connection example"""
 
 import numpy as np
-import sys
-
-# FIXME without appending sys.path make it more generic
-sys.path.append("../../../")
-from elastica import *
+import elastica as ea
 from elastica.experimental.connection_contact_joint.parallel_connection import (
     get_connection_vector_straight_straight_rod,
     SurfaceJointSideBySide,
 )
 from elastica._calculus import difference_kernel
+import sys
+
+sys.path.append("../")
+sys.path.append("../../")
+sys.path.append("../../../")
+
 from examples.JointCases.joint_cases_postprocessing import (
     plot_position,
     plot_video,
@@ -20,7 +22,12 @@ from examples.JointCases.joint_cases_postprocessing import (
 
 
 class ParallelConnection(
-    BaseSystemCollection, Constraints, Connections, Forcing, CallBacks
+    ea.BaseSystemCollection,
+    ea.Constraints,
+    ea.Connections,
+    ea.Forcing,
+    ea.Damping,
+    ea.CallBacks,
 ):
     pass
 
@@ -34,9 +41,8 @@ normal = np.array([0.0, 1.0, 0.0])
 binormal = np.cross(direction, normal)
 base_length = 0.2
 base_radius = 0.007
-base_area = np.pi * base_radius ** 2
+base_area = np.pi * base_radius**2
 density = 1750
-nu = 1e-2
 E = 3e4
 poisson_ratio = 0.5
 shear_modulus = E / (poisson_ratio + 1.0)
@@ -45,7 +51,7 @@ start_rod_1 = np.zeros((3,)) + 0.1 * direction
 start_rod_2 = start_rod_1 + binormal * 2 * base_radius
 
 # Create rod 1
-rod_one = CosseratRod.straight_rod(
+rod_one = ea.CosseratRod.straight_rod(
     n_elem,
     start_rod_1,
     direction,
@@ -53,13 +59,12 @@ rod_one = CosseratRod.straight_rod(
     base_length,
     base_radius,
     density,
-    nu,
-    E,
+    youngs_modulus=E,
     shear_modulus=shear_modulus,
 )
 parallel_connection_sim.append(rod_one)
 # Create rod 2
-rod_two = CosseratRod.straight_rod(
+rod_two = ea.CosseratRod.straight_rod(
     n_elem,
     start_rod_2,
     direction,
@@ -67,24 +72,24 @@ rod_two = CosseratRod.straight_rod(
     base_length,
     base_radius,
     density,
-    nu,
-    E,
+    youngs_modulus=E,
     shear_modulus=shear_modulus,
 )
 parallel_connection_sim.append(rod_two)
 
 # Apply boundary conditions to rod1.
 parallel_connection_sim.constrain(rod_one).using(
-    OneEndFixedBC, constrained_position_idx=(0,), constrained_director_idx=(0,)
+    ea.OneEndFixedBC, constrained_position_idx=(0,), constrained_director_idx=(0,)
 )
 
 # Apply boundary conditions to rod2.
 parallel_connection_sim.constrain(rod_two).using(
-    OneEndFixedBC, constrained_position_idx=(0,), constrained_director_idx=(0,)
+    ea.OneEndFixedBC, constrained_position_idx=(0,), constrained_director_idx=(0,)
 )
 
+
 # Apply a contraction force on rod one.
-class ContractionForce(NoForces):
+class ContractionForce(ea.NoForces):
     def __init__(
         self,
         ramp,
@@ -133,13 +138,28 @@ for i in range(n_elem):
     )  # k=kg/s2 nu=kg/s 1e-2
 
 
-class ParallelConnecitonCallback(CallBackBaseClass):
+# add damping
+damping_constant = 4e-3
+dt = 1e-3
+parallel_connection_sim.dampen(rod_one).using(
+    ea.AnalyticalLinearDamper,
+    damping_constant=damping_constant,
+    time_step=dt,
+)
+parallel_connection_sim.dampen(rod_two).using(
+    ea.AnalyticalLinearDamper,
+    damping_constant=damping_constant,
+    time_step=dt,
+)
+
+
+class ParallelConnecitonCallback(ea.CallBackBaseClass):
     """
     Call back function for parallel connection
     """
 
     def __init__(self, step_skip: int, callback_params: dict):
-        CallBackBaseClass.__init__(self)
+        ea.CallBackBaseClass.__init__(self)
         self.every = step_skip
         self.callback_params = callback_params
 
@@ -152,27 +172,26 @@ class ParallelConnecitonCallback(CallBackBaseClass):
             return
 
 
-pp_list_rod1 = defaultdict(list)
-pp_list_rod2 = defaultdict(list)
+pp_list_rod1 = ea.defaultdict(list)
+pp_list_rod2 = ea.defaultdict(list)
 
 
 parallel_connection_sim.collect_diagnostics(rod_one).using(
-    ParallelConnecitonCallback, step_skip=1000, callback_params=pp_list_rod1
+    ParallelConnecitonCallback, step_skip=40, callback_params=pp_list_rod1
 )
 parallel_connection_sim.collect_diagnostics(rod_two).using(
-    ParallelConnecitonCallback, step_skip=1000, callback_params=pp_list_rod2
+    ParallelConnecitonCallback, step_skip=40, callback_params=pp_list_rod2
 )
 
 
 parallel_connection_sim.finalize()
-timestepper = PositionVerlet()
+timestepper = ea.PositionVerlet()
 
-final_time = 5.0
+final_time = 20.0
 dl = base_length / n_elem
-dt = 1e-5
 total_steps = int(final_time / dt)
 print("Total steps", total_steps)
-integrate(timestepper, parallel_connection_sim, final_time, total_steps)
+ea.integrate(timestepper, parallel_connection_sim, final_time, total_steps)
 
 PLOT_FIGURE = True
 SAVE_FIGURE = False

@@ -1,20 +1,13 @@
-# FIXME without appending sys.path make it more generic
-import sys
-
-sys.path.append("../")
-sys.path.append("../../")
-
-# from collections import defaultdict
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.colors import to_rgb
 
 
-from elastica import *
+import elastica as ea
 from elastica.utils import MaxDimension
 
 
-class ButterflySimulator(BaseSystemCollection, CallBacks):
+class ButterflySimulator(ea.BaseSystemCollection, ea.CallBacks):
     pass
 
 
@@ -45,9 +38,8 @@ normal = np.array([0.0, 1.0, 0.0])
 
 total_length = 3.0
 base_radius = 0.25
-base_area = np.pi * base_radius ** 2
+base_area = np.pi * base_radius**2
 density = 5000
-nu = 0.0
 youngs_modulus = 1e4
 poisson_ratio = 0.5
 shear_modulus = youngs_modulus / (poisson_ratio + 1.0)
@@ -68,7 +60,7 @@ positions[..., half_n_elem:] = positions[
     - np.sin(angle_of_inclination) * vertical_direction
 )
 
-butterfly_rod = CosseratRod.straight_rod(
+butterfly_rod = ea.CosseratRod.straight_rod(
     n_elem,
     start=origin.reshape(3),
     direction=np.array([0.0, 0.0, 1.0]),
@@ -76,7 +68,6 @@ butterfly_rod = CosseratRod.straight_rod(
     base_length=total_length,
     base_radius=base_radius,
     density=density,
-    nu=nu,
     youngs_modulus=youngs_modulus,
     shear_modulus=shear_modulus,
     position=positions,
@@ -84,14 +75,15 @@ butterfly_rod = CosseratRod.straight_rod(
 
 butterfly_sim.append(butterfly_rod)
 
+
 # Add call backs
-class VelocityCallBack(CallBackBaseClass):
+class VelocityCallBack(ea.CallBackBaseClass):
     """
     Call back function for continuum snake
     """
 
     def __init__(self, step_skip: int, callback_params: dict):
-        CallBackBaseClass.__init__(self)
+        ea.CallBackBaseClass.__init__(self)
         self.every = step_skip
         self.callback_params = callback_params
 
@@ -110,7 +102,7 @@ class VelocityCallBack(CallBackBaseClass):
             return
 
 
-recorded_history = defaultdict(list)
+recorded_history = ea.defaultdict(list)
 # initially record history
 recorded_history["time"].append(0.0)
 recorded_history["position"].append(butterfly_rod.position_collection.copy())
@@ -125,13 +117,13 @@ butterfly_sim.collect_diagnostics(butterfly_rod).using(
 
 
 butterfly_sim.finalize()
-timestepper = PositionVerlet()
+timestepper = ea.PositionVerlet()
 # timestepper = PEFRL()
 
 dt = 0.01 * dl
 total_steps = int(final_time / dt)
 print("Total steps", total_steps)
-integrate(timestepper, butterfly_sim, final_time, total_steps)
+ea.integrate(timestepper, butterfly_sim, final_time, total_steps)
 
 if PLOT_FIGURE:
     # Plot the histories

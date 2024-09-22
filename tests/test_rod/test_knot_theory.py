@@ -4,23 +4,19 @@ import pytest
 import numpy as np
 from numpy.testing import assert_allclose
 
-from elastica.rod.data_structures import _bootstrap_from_data
-from elastica.rod.data_structures import (
-    _KinematicState,
-    _DynamicState,
-)
 from elastica.utils import MaxDimension
 
-from test_rods import MockTestRod
+from mock_rod import MockTestRod
 
 from elastica.rod.rod_base import RodBase
 from elastica.rod.knot_theory import (
-    KnotTheoryCompatibleProtocol,
     compute_twist,
     compute_writhe,
     compute_link,
     _compute_additional_segment,
 )
+
+from elastica.rod.protocol import CosseratRodProtocol
 
 
 @pytest.fixture
@@ -33,7 +29,7 @@ def knot_theory():
 def test_knot_theory_protocol():
     # To clear the protocol test coverage
     with pytest.raises(TypeError) as e_info:
-        protocol = KnotTheoryCompatibleProtocol()
+        protocol = CosseratRodProtocol()
         assert "cannot be instantiated" in e_info
 
 
@@ -41,12 +37,9 @@ def test_knot_theory_mixin_methods(knot_theory):
     class TestRodWithKnotTheory(MockTestRod, knot_theory.KnotTheory):
         def __init__(self):
             super().__init__()
-            self.radius = np.random.randn(MaxDimension.value(), self.n_elem)
+            self.radius = np.random.randn(MaxDimension.value(), self.n_elems)
 
     rod = TestRodWithKnotTheory()
-    assert hasattr(
-        rod, "MIXIN_PROTOCOL"
-    ), "Expected to mix-in variables: MIXIN_PROTOCOL"
     assert hasattr(
         rod, "compute_writhe"
     ), "Expected to mix-in functionals into the rod class: compute_writhe"

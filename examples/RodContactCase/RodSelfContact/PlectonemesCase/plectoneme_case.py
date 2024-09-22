@@ -1,17 +1,18 @@
 import numpy as np
-import sys
-
-sys.path.append("../../../../")
-from elastica import *
+import elastica as ea
 from examples.RodContactCase.post_processing import (
     plot_video_with_surface,
-    plot_velocity,
     plot_link_writhe_twist,
 )
 
 
 class PlectonemesCase(
-    BaseSystemCollection, Constraints, Connections, Forcing, CallBacks
+    ea.BaseSystemCollection,
+    ea.Constraints,
+    ea.Contact,
+    ea.Forcing,
+    ea.CallBacks,
+    ea.Damping,
 ):
     pass
 
@@ -36,11 +37,11 @@ step_skip = int(1.0 / (rendering_fps * time_step))
 
 # Rest of the rod parameters and construct rod
 base_radius = 0.025
-base_area = np.pi * base_radius ** 2
+base_area = np.pi * base_radius**2
 volume = base_area * base_length
 mass = 1.0
 density = mass / volume
-nu = 2.0
+nu = 2.0 / density / base_area
 E = 1e6
 poisson_ratio = 0.5
 shear_modulus = E / (poisson_ratio + 1.0)
@@ -51,7 +52,7 @@ start = np.zeros(
     3,
 )
 
-sherable_rod = CosseratRod.straight_rod(
+sherable_rod = ea.CosseratRod.straight_rod(
     n_elem,
     start,
     direction,
@@ -59,8 +60,7 @@ sherable_rod = CosseratRod.straight_rod(
     base_length,
     base_radius,
     density,
-    nu,
-    E,
+    youngs_modulus=E,
     shear_modulus=shear_modulus,
 )
 
@@ -69,11 +69,18 @@ sherable_rod.velocity_collection[2, int(n_elem / 2)] -= 1e-4
 
 plectonemes_sim.append(sherable_rod)
 
+# Add damping
+plectonemes_sim.dampen(sherable_rod).using(
+    ea.AnalyticalLinearDamper,
+    damping_constant=nu,
+    time_step=dt,
+)
+
 # boundary condition
 from elastica._rotations import _get_rotation_matrix
 
 
-class SelonoidsBC(ConstraintBase):
+class SelonoidsBC(ea.ConstraintBase):
     """ """
 
     def __init__(
@@ -85,7 +92,7 @@ class SelonoidsBC(ConstraintBase):
         twisting_time,
         time_twis_start,
         number_of_rotations,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.twisting_time = twisting_time
@@ -158,14 +165,17 @@ plectonemes_sim.constrain(sherable_rod).using(
 )
 
 # Add self contact to prevent penetration
-plectonemes_sim.connect(sherable_rod, sherable_rod).using(SelfContact, k=1e4, nu=10)
+plectonemes_sim.detect_contact_between(sherable_rod, sherable_rod).using(
+    ea.RodSelfContact, k=1e4, nu=10
+)
+
 
 # Add callback functions for plotting position of the rod later on
-class RodCallBack(CallBackBaseClass):
+class RodCallBack(ea.CallBackBaseClass):
     """ """
 
     def __init__(self, step_skip: int, callback_params: dict):
-        CallBackBaseClass.__init__(self)
+        ea.CallBackBaseClass.__init__(self)
         self.every = step_skip
         self.callback_params = callback_params
 
@@ -192,7 +202,7 @@ class RodCallBack(CallBackBaseClass):
             return
 
 
-post_processing_dict = defaultdict(list)  # list which collected data will be append
+post_processing_dict = ea.defaultdict(list)  # list which collected data will be append
 # set the diagnostics for rod and collect data
 plectonemes_sim.collect_diagnostics(sherable_rod).using(
     RodCallBack,
@@ -204,8 +214,8 @@ plectonemes_sim.collect_diagnostics(sherable_rod).using(
 plectonemes_sim.finalize()
 
 # Run the simulation
-time_stepper = PositionVerlet()
-integrate(time_stepper, plectonemes_sim, final_time, total_steps)
+time_stepper = ea.PositionVerlet()
+ea.integrate(time_stepper, plectonemes_sim, final_time, total_steps)
 
 # plotting the videos
 filename_video = "plectonemes.mp4"
@@ -246,9 +256,9 @@ segment_length = 10 * base_length
 
 type_of_additional_segment = "next_tangent"
 
-total_twist, local_twist = compute_twist(position_history, normal_history)
+total_twist, local_twist = ea.compute_twist(position_history, normal_history)
 
-total_link = compute_link(
+total_link = ea.compute_link(
     position_history,
     normal_history,
     radius_history,
@@ -256,7 +266,7 @@ total_link = compute_link(
     type_of_additional_segment,
 )
 
-total_writhe = compute_writhe(
+total_writhe = ea.compute_writhe(
     position_history, segment_length, type_of_additional_segment
 )
 

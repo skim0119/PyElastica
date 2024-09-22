@@ -1,32 +1,16 @@
 __doc__ = """ Experimental interaction implementation."""
-__all__ = [
-    "AnisotropicFrictionalPlaneRigidBody",
-]
 
 
 import numpy as np
 from elastica.external_forces import NoForces
-from elastica.interaction import *
-from elastica.interaction import (
-    find_slipping_elements,
-    apply_normal_force_numba_rigid_body,
-    InteractionPlaneRigidBody,
-)
+from elastica.contact_utils import _find_slipping_elements
+from elastica._contact_functions import _calculate_contact_forces_cylinder_plane
+from elastica.interaction import InteractionPlaneRigidBody
 
-import numba
 from numba import njit
 from elastica._linalg import (
-    _batch_matmul,
-    _batch_matvec,
-    _batch_cross,
-    _batch_norm,
     _batch_dot,
-    _batch_product_i_k_to_ik,
-    _batch_product_i_ik_to_k,
     _batch_product_k_ik_to_ik,
-    _batch_vector_sum,
-    _batch_matrix_transpose,
-    _batch_vec_oneD_vec_cross,
 )
 
 
@@ -80,7 +64,7 @@ class AnisotropicFrictionalPlaneRigidBody(NoForces, InteractionPlaneRigidBody):
         )
 
 
-@njit(cache=True)
+@njit(cache=True)  # type: ignore
 def anisotropic_friction_numba_rigid_body(
     plane_origin,
     plane_normal,
@@ -107,7 +91,7 @@ def anisotropic_friction_numba_rigid_body(
     (
         plane_response_force_mag,
         no_contact_point_idx,
-    ) = apply_normal_force_numba_rigid_body(
+    ) = _calculate_contact_forces_cylinder_plane(
         plane_origin,
         plane_normal,
         surface_tol,
@@ -136,7 +120,7 @@ def anisotropic_friction_numba_rigid_body(
         + kinetic_mu_backward * (1 - velocity_sign_along_axial_direction)
     )
     # Call slip function to check if elements slipping or not
-    slip_function_along_axial_direction = find_slipping_elements(
+    slip_function_along_axial_direction = _find_slipping_elements(
         velocity_along_axial_direction, slip_velocity_tol
     )
     kinetic_friction_force_along_axial_direction = -(
@@ -165,7 +149,7 @@ def anisotropic_friction_numba_rigid_body(
         + kinetic_mu_backward * (1 - velocity_sign_along_binormal_direction)
     )
     # Call slip function to check if elements slipping or not
-    slip_function_along_binormal_direction = find_slipping_elements(
+    slip_function_along_binormal_direction = _find_slipping_elements(
         velocity_along_binormal_direction, slip_velocity_tol
     )
     kinetic_friction_force_along_binormal_direction = -(

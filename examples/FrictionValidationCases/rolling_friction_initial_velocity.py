@@ -1,19 +1,15 @@
-__doc__ = """Rolling friction validation, for detailed explanation refer to Gazzola et. al. R. Soc. 2018  
+__doc__ = """Rolling friction validation, for detailed explanation refer to Gazzola et. al. R. Soc. 2018
 section 4.1.4 and Appendix G """
 
 import numpy as np
-import sys
-
-# FIXME without appending sys.path make it more generic
-sys.path.append("../../")
-from elastica import *
+import elastica as ea
 from examples.FrictionValidationCases.friction_validation_postprocessing import (
     plot_friction_validation,
 )
 
 
 class RollingFrictionInitialVelocitySimulator(
-    BaseSystemCollection, Constraints, Forcing
+    ea.BaseSystemCollection, ea.Constraints, ea.Forcing, ea.Damping, ea.Contact
 ):
     pass
 
@@ -35,10 +31,10 @@ def simulate_rolling_friction_initial_velocity_with(IFactor=0.0):
     normal = np.array([0.0, 1.0, 0.0])
     base_length = 1.0
     base_radius = 0.025
-    base_area = np.pi * base_radius ** 2
+    base_area = np.pi * base_radius**2
     mass = 1.0
     density = mass / (base_length * base_area)
-    nu = 1e-6
+    nu = 1e-6 / 2
     E = 1e9
     # For shear modulus of 2E/3
     poisson_ratio = 0.5
@@ -47,7 +43,7 @@ def simulate_rolling_friction_initial_velocity_with(IFactor=0.0):
     # Set shear matrix
     shear_matrix = np.repeat(1e4 * np.identity((3))[:, :, np.newaxis], n_elem, axis=2)
 
-    shearable_rod = CosseratRod.straight_rod(
+    shearable_rod = ea.CosseratRod.straight_rod(
         n_elem,
         start,
         direction,
@@ -55,8 +51,7 @@ def simulate_rolling_friction_initial_velocity_with(IFactor=0.0):
         base_length,
         base_radius,
         density,
-        nu,
-        E,
+        youngs_modulus=E,
         shear_modulus=shear_modulus,
     )
 
@@ -71,12 +66,20 @@ def simulate_rolling_friction_initial_velocity_with(IFactor=0.0):
     shearable_rod.velocity_collection[0, :] += Vs
 
     rolling_friction_initial_velocity_sim.append(shearable_rod)
-    rolling_friction_initial_velocity_sim.constrain(shearable_rod).using(FreeBC)
+    rolling_friction_initial_velocity_sim.constrain(shearable_rod).using(ea.FreeBC)
+
+    # Add damping
+    dt = 1e-6 * 2
+    rolling_friction_initial_velocity_sim.dampen(shearable_rod).using(
+        ea.AnalyticalLinearDamper,
+        damping_constant=nu,
+        time_step=dt,
+    )
 
     # Add gravitational forces
     gravitational_acc = -9.80665
     rolling_friction_initial_velocity_sim.add_forcing_to(shearable_rod).using(
-        GravityForces, acc_gravity=np.array([0.0, gravitational_acc, 0.0])
+        ea.GravityForces, acc_gravity=np.array([0.0, gravitational_acc, 0.0])
     )
 
     # Add friction forces
@@ -85,26 +88,27 @@ def simulate_rolling_friction_initial_velocity_with(IFactor=0.0):
     slip_velocity_tol = 1e-6
     static_mu_array = np.array([0.4, 0.4, 0.4])  # [forward, backward, sideways]
     kinetic_mu_array = np.array([0.2, 0.2, 0.2])  # [forward, backward, sideways]
+    friction_plane = ea.Plane(plane_origin=origin_plane, plane_normal=normal_plane)
+    rolling_friction_initial_velocity_sim.append(friction_plane)
 
-    rolling_friction_initial_velocity_sim.add_forcing_to(shearable_rod).using(
-        AnisotropicFrictionalPlane,
+    rolling_friction_initial_velocity_sim.detect_contact_between(
+        shearable_rod, friction_plane
+    ).using(
+        ea.RodPlaneContactWithAnisotropicFriction,
         k=10.0,
         nu=1e-4,
-        plane_origin=origin_plane,
-        plane_normal=normal_plane,
         slip_velocity_tol=slip_velocity_tol,
         static_mu_array=static_mu_array,
         kinetic_mu_array=kinetic_mu_array,
     )
 
     rolling_friction_initial_velocity_sim.finalize()
-    timestepper = PositionVerlet()
+    timestepper = ea.PositionVerlet()
 
     final_time = 2.0
-    dt = 1e-6
     total_steps = int(final_time / dt)
     print("Total steps", total_steps)
-    integrate(
+    ea.integrate(
         timestepper, rolling_friction_initial_velocity_sim, final_time, total_steps
     )
 
@@ -113,9 +117,9 @@ def simulate_rolling_friction_initial_velocity_with(IFactor=0.0):
     rotational_energy = shearable_rod.compute_rotational_energy()
 
     # compute translational and rotational energy using analytical equations
-    analytical_translational_energy = 0.5 * mass * Vs ** 2 / (1.0 + IFactor / 2) ** 2
+    analytical_translational_energy = 0.5 * mass * Vs**2 / (1.0 + IFactor / 2) ** 2
     analytical_rotational_energy = (
-        0.5 * mass * Vs ** 2 * (IFactor / 2.0) / (1.0 + IFactor / 2) ** 2
+        0.5 * mass * Vs**2 * (IFactor / 2.0) / (1.0 + IFactor / 2) ** 2
     )
 
     return {

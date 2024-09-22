@@ -13,7 +13,6 @@
 
 import os
 import sys
-import sphinx_rtd_theme
 
 sys.path.insert(0, os.path.abspath('../'))
 
@@ -23,7 +22,7 @@ from elastica.version import VERSION
 # -- Project information -----------------------------------------------------
 
 project = 'PyElastica'
-copyright = '2022, Gazzola Lab'
+copyright = '2024, Gazzola Lab'
 author = 'Gazzola Lab'
 
 # The full version, including alpha/beta/rc tags
@@ -41,8 +40,8 @@ extensions = [
     'sphinx_autodoc_typehints',
     #'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
-    'sphinx_rtd_theme',
     'sphinx.ext.mathjax',
+    "sphinxcontrib.mermaid",
     'numpydoc',
     'myst_parser',
 ]
@@ -100,3 +99,6 @@ autodoc_member_order = 'bysource'
 
 # -- Options for numpydoc ---------------------------------------------------
 numpydoc_show_class_members = False
+
+# -- Mermaid configuration ---------------------------------------------------
+mermaid_params = ['--theme', 'neutral']

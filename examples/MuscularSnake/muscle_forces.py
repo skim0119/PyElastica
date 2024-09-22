@@ -1,7 +1,6 @@
 __doc__ = """ Muscular snake muscle forces NumPy implementation """
 __all__ = ["MuscleForces"]
 import numpy as np
-import numba
 from numba import njit
 from elastica import NoForces
 from elastica._calculus import difference_kernel
@@ -78,7 +77,7 @@ class MuscleForces(NoForces):
         self.step = step
         self.counter = 0
 
-    def apply_forces(self, system, time: np.float = 0.0):
+    def apply_forces(self, system, time: np.float64 = 0.0):
         forces = self._apply_forces(
             self.amplitude,
             self.wave_number,

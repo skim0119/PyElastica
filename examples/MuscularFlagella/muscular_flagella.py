@@ -1,11 +1,7 @@
 __doc__ = """Muscular flagella example from Zhang et. al. Nature Comm 2019 paper."""
 
-import sys
 import numpy as np
-
-sys.path.append("../../")
-
-from elastica import *
+import elastica as ea
 from examples.MuscularFlagella.post_processing import (
     plot_video_2D,
     plot_video,
@@ -19,7 +15,12 @@ from examples.MuscularFlagella.muscle_forces_flagella import MuscleForces
 
 
 class MuscularFlagellaSimulator(
-    BaseSystemCollection, Constraints, Connections, Forcing, CallBacks
+    ea.BaseSystemCollection,
+    ea.Constraints,
+    ea.Connections,
+    ea.Forcing,
+    ea.CallBacks,
+    ea.Damping,
 ):
     pass
 
@@ -58,7 +59,7 @@ normal = np.array([0.0, 0.0, 1.0])
 binormal = np.cross(direction, normal)
 nu_body = 0
 
-flagella_body = CosseratRod.straight_rod(
+flagella_body = ea.CosseratRod.straight_rod(
     n_elem_body,
     start,
     direction,
@@ -66,8 +67,7 @@ flagella_body = CosseratRod.straight_rod(
     base_length_body,
     radius,
     density_body,
-    nu_body,
-    E,
+    youngs_modulus=E,
     shear_modulus=shear_modulus,
 )
 
@@ -76,7 +76,7 @@ flagella_body = CosseratRod.straight_rod(
 # geometric parameters of head is already computed, when flagella_body object is initialized.
 # Reference: Aydin, O., Zhang, X., Nuethong, S., Pagan-Diaz, G. J., et al. PNAS (2019).
 radius_reference = 0.0053  # mm
-area_reference = np.pi * radius_reference ** 2
+area_reference = np.pi * radius_reference**2
 
 # Second moment of area for disk cross-section
 I0_1 = area_reference * area_reference / (4.0 * np.pi)
@@ -132,7 +132,8 @@ density_muscle = 2.6e-4  # g/mm3
 base_radius_muscle = 0.01  # mm
 base_length_muscle = 0.10756
 E_muscle = 0.3e5  # MPa
-nu_muscle = 1e-6
+shear_modulus_muscle = E_muscle / (poisson_ratio + 1.0)
+nu_muscle = 1e-6 / density_muscle / (np.pi * base_radius_muscle**2)
 
 # Start position of the muscle is the 4th element position of body. Lets use the exact location, because this will
 # simplify the connection implementation.
@@ -143,7 +144,7 @@ element_pos = 0.5 * (
 start_muscle = np.array([4.5 * base_length_muscle, 0.0053, 0.1])
 
 
-flagella_muscle = CosseratRod.straight_rod(
+flagella_muscle = ea.CosseratRod.straight_rod(
     n_elem_muscle,
     start_muscle,
     direction,
@@ -151,12 +152,18 @@ flagella_muscle = CosseratRod.straight_rod(
     base_length_muscle,
     base_radius_muscle,
     density_muscle,
-    nu_muscle,
-    E_muscle,
-    shear_modulus=shear_modulus,
+    youngs_modulus=E_muscle,
+    shear_modulus=shear_modulus_muscle,
 )
 
 muscular_flagella_sim.append(flagella_muscle)
+
+# add damping
+muscular_flagella_sim.dampen(flagella_muscle).using(
+    ea.AnalyticalLinearDamper,
+    damping_constant=nu_muscle,
+    time_step=time_step,
+)
 
 # Connect muscle and body
 body_connection_idx = (4, 5)
@@ -189,13 +196,14 @@ density_fluid = 1.15e-3  # g/mm3
 reynolds_number = 1.8e-2
 dynamic_viscosity = 1.2e-3
 muscular_flagella_sim.add_forcing_to(flagella_body).using(
-    SlenderBodyTheory, dynamic_viscosity=dynamic_viscosity
+    ea.SlenderBodyTheory, dynamic_viscosity=dynamic_viscosity
 )
 
+
 # Add call backs
-class MuscularFlagellaCallBack(CallBackBaseClass):
+class MuscularFlagellaCallBack(ea.CallBackBaseClass):
     def __init__(self, step_skip: int, callback_params: dict):
-        CallBackBaseClass.__init__(self)
+        ea.CallBackBaseClass.__init__(self)
         self.every = step_skip
         self.callback_params = callback_params
 
@@ -210,14 +218,14 @@ class MuscularFlagellaCallBack(CallBackBaseClass):
             self.callback_params["tangents"].append(system.tangents.copy())
 
 
-post_processing_dict_body = defaultdict(list)
+post_processing_dict_body = ea.defaultdict(list)
 muscular_flagella_sim.collect_diagnostics(flagella_body).using(
     MuscularFlagellaCallBack,
     step_skip=step_skip,
     callback_params=post_processing_dict_body,
 )
 
-post_processing_dict_muscle = defaultdict(list)
+post_processing_dict_muscle = ea.defaultdict(list)
 muscular_flagella_sim.collect_diagnostics(flagella_muscle).using(
     MuscularFlagellaCallBack,
     step_skip=step_skip,
@@ -227,9 +235,9 @@ muscular_flagella_sim.collect_diagnostics(flagella_muscle).using(
 
 muscular_flagella_sim.finalize()
 
-timestepper = PositionVerlet()
+timestepper = ea.PositionVerlet()
 print("Total steps", total_steps)
-integrate(timestepper, muscular_flagella_sim, final_time, total_steps)
+ea.integrate(timestepper, muscular_flagella_sim, final_time, total_steps)
 
 
 # Plot the videos
